@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Flask-MongoDB Example App</title>
+    <link
+      rel="stylesheet"
+      href="{{ url_for('static', filename='css/style.css') }}"
+    />
+  </head>
+  <body>
+    <div class="container">
+      <header>
+        <h1>Flask-MongoDB Example App</h1>
+        <p>
+          <a href="{{ url_for('home')}}">Home</a> |
+          <a href="{{ url_for('read')}}">All posts</a> |
+          <a href="{{ url_for('create')}}">Create a post</a>
+        </p>
+      </header>
+      <main>{% block container %} {% endblock %}</main>
+      <footer>
+        <p>
+          The source code for this example app is
+          <a href="https://github.com/nyu-database-design/flask-mongodb-web-app"
+            >available on Github</a
+          >.
+        </p>
+      </footer>
+    </div>
+  </body>
+</html>
