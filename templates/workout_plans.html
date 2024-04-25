@@ -1,0 +1,24 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="container">
+    <h1 class="mt-4 mb-4">Workout Plans</h1>
+    <p class="lead">Browse through our workout plans to achieve your fitness goals:</p>
+
+    {% for workout in plans %}
+    <div class="card mb-4">
+        <div class="card-body">
+            <h5 class="card-title">{{ workout.title }}</h5>
+            <h6 class="card-subtitle mb-2 text-muted">Type: {{ workout.workout_type }}</h6>
+            <p class="card-text">{{ workout.description }}</p>
+            <p class="card-text">
+                <small class="text-muted">Posted by {{ workout.created_by }} at {{ workout.created_at }}</small>
+            </p>
+            {% if 'username' in session and workout.created_by == session['username'] %}
+            <a href="{{ url_for('delete_workout_plan', workout_id=workout._id) }}" class="btn btn-danger">Delete</a>
+            {% endif %}
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% endblock %}

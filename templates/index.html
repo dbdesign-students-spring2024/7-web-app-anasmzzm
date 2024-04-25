@@ -1,11 +1,11 @@
 {% extends 'base.html' %}
 
-{% block container %}
+{% block content %}
 <h2>Welcome!</h2>
-<p>Welcome to the Flask app. This is the home page. Here are a few links to example pages you might find interesting.
+<p> Workout Central is your place to find the perfect workout for you! Here you can view and create your own workouts.
     <ul>
-        <li><a href="{{ url_for('read')}}">a page that displays information pulled from a MongoDB database collection</a></li>
-        <li><a href="{{ url_for('create')}}">a page with a form you can submit to create a new record in a MongoDB collection</a></li>
+        <li><a href="{{ url_for('workout_plans')}}">View all our workouts!</a></li>
+        <li><a href="{{ url_for('add_workout_plan')}}">Add your own workout after logging in!</a></li>
     </ul>
 </p>
 {% endblock %}

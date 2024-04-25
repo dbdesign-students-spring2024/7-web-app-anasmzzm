@@ -5,14 +5,7 @@ import sys
 import subprocess
 import datetime
 
-from flask import Flask, render_template, request, redirect, url_for, make_response
-'''
-# import logging
-import sentry_sdk
-from sentry_sdk.integrations.flask import (
-    FlaskIntegration,
-)  # delete this if not using sentry.io
-'''
+from flask import Flask, render_template, request, redirect, url_for, session, make_response
 
 # from markupsafe import escape
 import pymongo
@@ -25,26 +18,9 @@ from dotenv import load_dotenv
 # if you do not yet have a file named .env, make one based on the template in env.example
 load_dotenv(override=True)  # take environment variables from .env.
 
-# initialize Sentry for help debugging... this requires an account on sentrio.io
-# you will need to set the SENTRY_DSN environment variable to the value provided by Sentry
-# delete this if not using sentry.io
-'''
-sentry_sdk.init(
-    dsn=os.getenv("SENTRY_DSN"),
-    # enable_tracing=True,
-    # Set traces_sample_rate to 1.0 to capture 100% of transactions for performance monitoring.
-    traces_sample_rate=1.0,
-    # Set profiles_sample_rate to 1.0 to profile 100% of sampled transactions.
-    # We recommend adjusting this value in production.
-    profiles_sample_rate=1.0,
-    integrations=[FlaskIntegration()],
-    traces_sample_rate=1.0,
-    send_default_pii=True,
-)
-'''
-
 # instantiate the app using sentry for debugging
 app = Flask(__name__)
+app.secret_key = 'your secret key'
 
 # # turn on debugging if in development mode
 # app.debug = True if os.getenv("FLASK_ENV", "development") == "development" else False
@@ -61,117 +37,139 @@ except ConnectionFailure as e:
     # catch any database errors
     # the ping command failed, so the connection is not available.
     print(" * MongoDB connection error:", e)  # debug
-    sentry_sdk.capture_exception(e)  # send the error to sentry.io. delete if not using
     sys.exit(1)  # this is a catastrophic error, so no reason to continue to live
 
 
 # set up the routes
 
-
-@app.route("/")
+@app.route("/", methods = ["GET"])
 def home():
     """
     Route for the home page.
     Simply returns to the browser the content of the index.html file located in the templates folder.
     """
-    return render_template("index.html")
+    return render_template("home.html")
 
 
-@app.route("/read")
-def read():
+@app.route("/login", methods = ["GET", "POST"])
+def login():
+    if request.method == "POST":
+        username = request.form['username']
+        password = request.form['password']
+        #checking if user/pass match to existing record within db
+        user = db.users.find_one({"username": username})
+        if user:
+            #checking if password matches
+            if user["password"] == password:
+                session["username"] = username
+                return redirect(url_for("home"))
+            else:
+                #given an incorrect password
+                error_message = "Incorrect Password. Please try again!"
+                return render_template("login.html", error = error_message)
+            
+        else:
+            #if username is invalid
+            error_message = "Username not found. Please register or try again."
+            return render_template("login.html", error = error_message)
+    return render_template("login.html")
+
+
+@app.route("/logout")
+def logout():
+    session.pop("username", None)
+    return redirect(url_for("home"))
+
+
+@app.route("/register", methods = ["GET", "POST"])
+def register():
+    if request.method == "POST":
+        username = request.form["username"]
+        password = request.form["password"]
+
+        existing_user = db.users.find_one({"username": username})
+        if existing_user:
+            error = "Username already exists"
+            return render_template("register.html", error=error)
+        else:
+            db.users.insert_one({"username": username, "password": password})
+            session["username"] = username
+            return redirect(url_for("workout_plans"))
+    
+    return render_template("register.html")
+
+
+@app.route("/workout_plans", methods=["GET"])
+def workout_plans():
     """
     Route for GET requests to the read page.
     Displays some information for the user with links to other pages.
     """
-    docs = db.exampleapp.find({}).sort(
-        "created_at", -1
-    )  # sort in descending order of created_at timestamp
-    return render_template("read.html", docs=docs)  # render the read template
+    plans = list(db.workout_plans.find({})) 
+    sorted_plans = []
+    for plan in plans:
+        plan["_id"] = str(plan["_id"])
+        plan["created_at"] = plan["created_at"].strftime("%m-%d-%Y %H:%M:%S")
+        sorted_plans.append(plan)
+    # Sort plans by created_at timestamp in descending order
+    return render_template("workout_plans.html", plans=sorted_plans)
 
 
-@app.route("/create")
-def create():
+@app.route("/add_workout_plan", methods=["GET"])
+def add_workout_plan_form():
     """
-    Route for GET requests to the create page.
-    Displays a form users can fill out to create a new document.
+    Route for GET requests to the add workout page.
+    Displays a form to fill out to create new workout.
     """
-    return render_template("create.html")  # render the create template
+    if "username" not in session:
+        return redirect(url_for("login"))
+
+    return render_template("add_workout_plan.html")
 
 
-@app.route("/create", methods=["POST"])
-def create_post():
+@app.route("/add_workout_plan", methods=["POST"])
+def add_workout_plan():
     """
-    Route for POST requests to the create page.
+    Route for POST requests to the add workouts page
     Accepts the form submission data for a new document and saves the document to the database.
     """
-    name = request.form["fname"]
-    message = request.form["fmessage"]
+    if "username" not in session:
+        return redirect(url_for("login"))
 
-    # create a new document with the data the user entered
-    doc = {"name": name, "message": message, "created_at": datetime.datetime.utcnow()}
-    db.exampleapp.insert_one(doc)  # insert a new document
+    form = request.form.to_dict()
+    title = form["title"]
+    workout_type = form["type"]
+    description = form["description"]
+    created_by = session["username"]
+    created_at = datetime.datetime.utcnow()
 
-    return redirect(
-        url_for("read")
-    )  # tell the browser to make a request for the /read route
+    db.workout_plans.insert_one({
+        "title": title,
+        "workout_type": workout_type,
+        "description": description,
+        "created_by": created_by,
+        "created_at": created_at
+    })
 
-
-@app.route("/edit/<mongoid>")
-def edit(mongoid):
-    """
-    Route for GET requests to the edit page.
-    Displays a form users can fill out to edit an existing record.
-
-    Parameters:
-    mongoid (str): The MongoDB ObjectId of the record to be edited.
-    """
-    doc = db.exampleapp.find_one({"_id": ObjectId(mongoid)})
-    return render_template(
-        "edit.html", mongoid=mongoid, doc=doc
-    )  # render the edit template
+    return redirect(url_for("workout_plans"))
 
 
-@app.route("/edit/<mongoid>", methods=["POST"])
-def edit_post(mongoid):
-    """
-    Route for POST requests to the edit page.
-    Accepts the form submission data for the specified document and updates the document in the database.
+@app.route("/delete_workout_plan/<workout_id>")
+def delete_workout_plan(workout_id):
+    if "username" not in session:
+        return redirect(url_for("login"))
 
-    Parameters:
-    mongoid (str): The MongoDB ObjectId of the record to be edited.
-    """
-    name = request.form["fname"]
-    message = request.form["fmessage"]
+    # Fetch the workout plan from the database
+    workout = db.workout_plans.find_one({"_id": ObjectId(workout_id)})
 
-    doc = {
-        # "_id": ObjectId(mongoid),
-        "name": name,
-        "message": message,
-        "created_at": datetime.datetime.utcnow(),
-    }
+    # Check if the logged-in user is the creator of the workout
+    if workout["created_by"] != session["username"]:
+        return "Unauthorized", 403  # Return a 403 Forbidden error
 
-    db.exampleapp.update_one(
-        {"_id": ObjectId(mongoid)}, {"$set": doc}  # match criteria
-    )
+    # Delete the workout plan from the database
+    db.workout_plans.delete_one({"_id": ObjectId(workout_id)})
 
-    return redirect(
-        url_for("read")
-    )  # tell the browser to make a request for the /read route
-
-
-@app.route("/delete/<mongoid>")
-def delete(mongoid):
-    """
-    Route for GET requests to the delete page.
-    Deletes the specified record from the database, and then redirects the browser to the read page.
-
-    Parameters:
-    mongoid (str): The MongoDB ObjectId of the record to be deleted.
-    """
-    db.exampleapp.delete_one({"_id": ObjectId(mongoid)})
-    return redirect(
-        url_for("read")
-    )  # tell the web browser to make a request for the /read route.
+    return redirect(url_for("workout_plans"))
 
 
 @app.route("/webhook", methods=["POST"])
@@ -205,4 +203,4 @@ def handle_error(e):
 # run the app
 if __name__ == "__main__":
     # logging.basicConfig(filename="./flask_error.log", level=logging.DEBUG)
-    app.run(load_dotenv=True)
+    app.run(load_dotenv=True, debug=True)

@@ -1,5 +1,6 @@
-# Flask-MongoDB Web App
+# Flask-Mongo Web App: Workout Central
+##### Anas Moazzam
 
-In this assignment you will create a web app that relies upon a MongoDB database.
+My web app is called Workout Central. This app allows users to come to a place to access workouts or share their own to the fitness community. We first land in the home page. Here, there are two links to our main service: viewing workouts and sharing workouts. Any user, registered or not, is able to view workouts through the All Workouts page. This page shows the title of the workout, what type of workout (weightlifting, sport specific, etc.) and the workout routine itself. Only the user who created the post will see a delete button and be able to delete the workout from the page. However, only logged in registered users can add workout plans through the Add A Workout page. If a non logged in user clicks this page, they are redirected to the Log-In page. On the Add A Workout page, users enter the title, workout type, and the workout routine. Users can either Login or Register. Both pages allow users to travel to each page so users can do what is necessary for them. Finally, the LogOff button appears only if someone is logged in, which takes away the LogIn and Register buttons as well.
 
-Replace the contents of this file with a description of your own web app, as described in [the instructions](./instructions.md).
+Here are some screenshots of the page working on my local computer:

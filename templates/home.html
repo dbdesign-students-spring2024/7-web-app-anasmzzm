@@ -1,0 +1,11 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<h2>Hello!</h2>
+<p>Welcome to the Workout Manager app. Here you can view and create your own workouts.
+<ul>
+    <a href="{{ url_for('workout_plans') }}">View all our workouts!</a> <br />
+    <a href="{{ url_for('add_workout_plan') }}">Add your own workout after logging in!</a>
+</ul>
+</p>
+{% endblock %}
